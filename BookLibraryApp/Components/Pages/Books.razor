@@ -1,0 +1,61 @@
+@page "/books"
+
+@using BookLibraryApp.Models
+@inject BookLibraryApp.Services.IBookService BookService
+
+<PageTitle>Книги</PageTitle>
+
+<h3>Книги</h3>
+
+@if (books == null)
+{
+    <p>Загрузка данных...</p>
+}
+else if (books.Count == 0)
+{
+    <p>Книги отсутствуют.</p>
+}
+else
+{
+    <table class="table table-striped table-hover mt-3">
+        <thead class="table-dark">
+            <tr>
+                <th>Название</th>
+                <th>Автор</th>
+                <th>Год</th>
+                <th>Тип</th>
+                <th>Доступна</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var book in books)
+            {
+                <tr>
+                    <td>@book.Title</td>
+                    <td>@book.Author</td>
+                    <td>@book.YearOfPublication</td>
+                    <td>@book.GetType().Name</td>
+                    <td>
+                        @if (book.IsAvailable)
+                        {
+                            <span class="badge bg-success">Да</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger">Нет</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Book>? books;
+
+    protected override async Task OnInitializedAsync()
+    {
+        books = await BookService.GetAllBooksAsync();
+    }
+}
