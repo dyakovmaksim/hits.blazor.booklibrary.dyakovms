@@ -1,0 +1,232 @@
+@page "/my-books"
+@rendermode InteractiveServer
+
+@inject BookLibraryApp.Services.IBookService BookService
+@inject AuthenticationStateProvider AuthStateProvider
+@implements IDisposable
+
+<PageTitle>Мои книги</PageTitle>
+
+@if (isLoading)
+{
+    <p>Загрузка...</p>
+}
+else if (!isMember)
+{
+    <div class="alert alert-warning mt-3">
+        Раздел доступен только читателям. <NavLink href="login">Войдите</NavLink>, чтобы продолжить.
+    </div>
+}
+else
+{
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+    else if (!string.IsNullOrEmpty(statusMessage))
+    {
+        <div class="alert @statusClass">@statusMessage</div>
+    }
+
+    <h4>Выданные книги</h4>
+    @if (borrowedBooks?.Count > 0)
+    {
+        <table class="table table-striped">
+            <thead class="table-dark">
+                <tr>
+                    <th>Название</th>
+                    <th>Автор</th>
+                    <th>Дата выдачи</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var tx in borrowedBooks!)
+                {
+                    <tr>
+                        <td>@tx.Book?.Title</td>
+                        <td>@tx.Book?.Author</td>
+                        <td>@tx.BorrowedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger"
+                                    disabled="@IsReturning(tx.Id)"
+                                    @onclick="() => ReturnAsync(tx.Id)">
+                                @(IsReturning(tx.Id) ? "Сдаём..." : "Сдать книгу")
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p>Книг на руках нет.</p>
+    }
+
+    <h4 class="mt-4">Доступные книги</h4>
+    @if (availableBooks?.Count > 0)
+    {
+        <table class="table table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Название</th>
+                    <th>Автор</th>
+                    <th>Год</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var book in availableBooks!)
+                {
+                    <tr>
+                        <td>@book.Title</td>
+                        <td>@book.Author</td>
+                        <td>@book.YearOfPublication</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" disabled="@isBorrowing" @onclick="() => BorrowAsync(book.Id)">
+                                Добавить
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p>Нет доступных книг для выдачи.</p>
+    }
+}
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    private int memberId;
+    private bool isLoading = true;
+    private bool isMember;
+    private bool isBorrowing;
+    private bool isReturning;
+    private int? returningTxId;
+    private string? errorMessage;
+    private string? statusMessage;
+    private string statusClass = "alert-success";
+    private List<BorrowTransaction>? borrowedBooks;
+    private List<Book>? availableBooks;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthStateTask is not null)
+        {
+            var state = await AuthStateTask;
+            await LoadDataAsync(state);
+        }
+
+        AuthStateProvider.AuthenticationStateChanged += OnAuthStateChanged;
+    }
+
+    private async void OnAuthStateChanged(Task<AuthenticationState> stateTask)
+    {
+        var state = await stateTask;
+        await LoadDataAsync(state);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadDataAsync(AuthenticationState state)
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var user = state.User;
+
+            if (user?.Identity?.IsAuthenticated != true || !user.IsInRole(SimpleAuthStateProvider.MemberRole))
+            {
+                isMember = false;
+                return;
+            }
+
+            var memberIdValue = user.FindFirst("MemberId")?.Value;
+            if (!int.TryParse(memberIdValue, out memberId))
+            {
+                errorMessage = "Не удалось определить читателя для операции.";
+                return;
+            }
+
+            isMember = true;
+            borrowedBooks = await BookService.GetBorrowedByMemberAsync(memberId);
+            availableBooks = await BookService.GetAvailableBooksAsync();
+            statusMessage = null;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Ошибка загрузки данных: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task BorrowAsync(int bookId)
+    {
+        if (isBorrowing) return;
+
+        isBorrowing = true;
+        errorMessage = null;
+
+        try
+        {
+            var state = AuthStateTask is not null ? await AuthStateTask : await AuthStateProvider.GetAuthenticationStateAsync();
+            await BookService.BorrowBookAsync(bookId, memberId);
+            statusClass = "alert-success";
+            statusMessage = "Книга взята. Проверьте раздел ниже.";
+            await LoadDataAsync(state);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Не удалось добавить книгу: {ex.Message}";
+        }
+        finally
+        {
+            isBorrowing = false;
+        }
+    }
+
+    private bool IsReturning(int txId) => isReturning && returningTxId == txId;
+
+    private async Task ReturnAsync(int transactionId)
+    {
+        if (isReturning) return;
+
+        isReturning = true;
+        returningTxId = transactionId;
+        errorMessage = null;
+        statusMessage = null;
+
+        try
+        {
+            await BookService.ReturnBookAsync(transactionId);
+            statusClass = "alert-success";
+            statusMessage = "Книга успешно сдана и снова доступна.";
+            var state = AuthStateTask is not null ? await AuthStateTask : await AuthStateProvider.GetAuthenticationStateAsync();
+            await LoadDataAsync(state);
+        }
+        catch (Exception ex)
+        {
+            statusClass = "alert-danger";
+            statusMessage = $"Не удалось сдать книгу: {ex.Message}";
+        }
+        finally
+        {
+            isReturning = false;
+            returningTxId = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        AuthStateProvider.AuthenticationStateChanged -= OnAuthStateChanged;
+    }
+}

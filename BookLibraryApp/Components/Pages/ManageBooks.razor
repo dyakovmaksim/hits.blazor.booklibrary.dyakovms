@@ -1,0 +1,200 @@
+@page "/manage-books"
+@rendermode InteractiveServer
+
+@inject BookLibraryApp.Services.IBookService BookService
+
+<PageTitle>Управление книгами</PageTitle>
+
+<AuthorizeView Roles="Librarian" Context="authState">
+    <Authorized>
+        <h3>Добавление новой книги</h3>
+
+        @if (!string.IsNullOrEmpty(success))
+        {
+            <div class="alert alert-success">@success</div>
+        }
+        else if (!string.IsNullOrEmpty(error))
+        {
+            <div class="alert alert-danger">@error</div>
+        }
+
+        <EditForm class="mt-3 col-lg-4" Model="formModel" OnValidSubmit="CreateBookAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="mb-3">
+                <label class="form-label">Тип книги</label>
+                <InputSelect class="form-select" @bind-Value="formModel.Type">
+                    @foreach (var type in Enum.GetValues<BookType>())
+                    {
+                        <option value="@type">@type</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Название</label>
+                <InputText class="form-control" @bind-Value="formModel.Title" />
+                <ValidationMessage For="@(() => formModel.Title)" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Автор</label>
+                <InputText class="form-control" @bind-Value="formModel.Author" />
+                <ValidationMessage For="@(() => formModel.Author)" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Год</label>
+                <InputNumber class="form-control" @bind-Value="formModel.YearOfPublication" />
+            </div>
+
+            <button class="btn btn-success mt-3" type="submit" disabled="@isSubmitting">
+                @(isSubmitting ? "Добавляем..." : "Добавить книгу")
+            </button>
+        </EditForm>
+
+        <h4 class="mt-5">Список книг</h4>
+        @if (!string.IsNullOrEmpty(listMessage))
+        {
+            <div class="alert @listAlert">@listMessage</div>
+        }
+
+        @if (isBooksLoading)
+        {
+            <p>Загрузка...</p>
+        }
+        else if (books == null || books.Count == 0)
+        {
+            <p>Пока нет книг в каталоге.</p>
+        }
+        else
+        {
+            <table class="table table-striped mt-3">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Название</th>
+                        <th>Автор</th>
+                        <th>Тип</th>
+                        <th>Доступна</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var book in books)
+                    {
+                        <tr>
+                            <td>@book.Title</td>
+                            <td>@book.Author</td>
+                            <td>@book.GetType().Name</td>
+                            <td>
+                                @if (book.IsAvailable)
+                                {
+                                    <span class="badge bg-success">Да</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">Нет</span>
+                                }
+                            </td>
+                            <td>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-danger"
+                                        disabled="@IsDeleting(book.Id)"
+                                        @onclick="() => DeleteBookAsync(book.Id)">
+                                    @(IsDeleting(book.Id) ? "Удаляем..." : "Удалить")
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <div class="alert alert-warning mt-3">
+            Доступно только библиотекарям.
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private readonly BookCreateModel formModel = new();
+    private bool isSubmitting;
+    private string? success;
+    private string? error;
+    private List<Book>? books;
+    private bool isBooksLoading;
+    private bool isDeleting;
+    private int? deletingBookId;
+    private string? listMessage;
+    private string listAlert = "alert-info";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBooksAsync();
+    }
+
+    private async Task CreateBookAsync()
+    {
+        success = null;
+        error = null;
+        isSubmitting = true;
+
+        try
+        {
+            var book = await BookService.AddBookAsync(formModel);
+            success = $"Книга \"{book.Title}\" добавлена.";
+            ResetForm();
+            await LoadBooksAsync();
+        }
+        catch (Exception ex)
+        {
+            error = $"Ошибка при добавлении: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        formModel.Title = string.Empty;
+        formModel.Author = string.Empty;
+    }
+
+    private async Task LoadBooksAsync()
+    {
+        isBooksLoading = true;
+        books = await BookService.GetAllBooksAsync();
+        isBooksLoading = false;
+    }
+
+    private bool IsDeleting(int bookId) => isDeleting && deletingBookId == bookId;
+
+    private async Task DeleteBookAsync(int bookId)
+    {
+        if (isDeleting) return;
+
+        isDeleting = true;
+        deletingBookId = bookId;
+        listMessage = null;
+
+        try
+        {
+            await BookService.DeleteBookAsync(bookId);
+            listAlert = "alert-success";
+            listMessage = "Книга удалена.";
+            await LoadBooksAsync();
+        }
+        catch (Exception ex)
+        {
+            listAlert = "alert-danger";
+            listMessage = $"Не удалось удалить книгу: {ex.Message}";
+        }
+        finally
+        {
+            isDeleting = false;
+            deletingBookId = null;
+        }
+    }
+}

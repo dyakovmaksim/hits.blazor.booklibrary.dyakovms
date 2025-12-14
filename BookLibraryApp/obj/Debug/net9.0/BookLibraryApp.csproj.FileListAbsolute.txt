@@ -190,5 +190,6 @@
 /Users/maksim/hits.blazor.booklibrary.dyakovms/BookLibraryApp/obj/Debug/net9.0/ref/BookLibraryApp.dll
 /Users/maksim/hits.blazor.booklibrary.dyakovms/BookLibraryApp/bin/Debug/net9.0/Microsoft.AspNetCore.Identity.EntityFrameworkCore.dll
 /Users/maksim/hits.blazor.booklibrary.dyakovms/BookLibraryApp/obj/Debug/net9.0/BookLibraryApp.sourcelink.json
-/Users/maksim/hits.blazor.booklibrary.dyakovms/BookLibraryApp/obj/Debug/net9.0/compressed/dgj2axo25h-4uw7sj8o7r.gz
-/Users/maksim/hits.blazor.booklibrary.dyakovms/BookLibraryApp/obj/Debug/net9.0/compressed/jlj4bp2uet-4uw7sj8o7r.gz
+/Users/maksim/hits.blazor.booklibrary.dyakovms/BookLibraryApp/obj/Debug/net9.0/scopedcss/Components/Pages/Register.razor.rz.scp.css
+/Users/maksim/hits.blazor.booklibrary.dyakovms/BookLibraryApp/obj/Debug/net9.0/compressed/dgj2axo25h-vx80g151f7.gz
+/Users/maksim/hits.blazor.booklibrary.dyakovms/BookLibraryApp/obj/Debug/net9.0/compressed/jlj4bp2uet-vx80g151f7.gz

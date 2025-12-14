@@ -12,21 +12,36 @@
     <nav class="nav flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Дом
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="books">
+            <NavLink class="nav-link" href="books" Match="NavLinkMatch.All">
                 <span class="bi bi-book-nav-menu"></span> Книги
             </NavLink>
         </div>
 
+        <AuthorizeView Roles="Member">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="my-books" Match="NavLinkMatch.All">
+                        <span class="bi bi-collection-nav-menu"></span> Мои книги
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
         <AuthorizeView Roles="Librarian">
             <Authorized>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="register">
+                    <NavLink class="nav-link" href="register" Match="NavLinkMatch.All">
                         <span class="bi bi-plus-square-fill-nav-menu"></span> Регистрация
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="manage-books" Match="NavLinkMatch.All">
+                        <span class="bi bi-journal-plus-nav-menu"></span> Управление
                     </NavLink>
                 </div>
             </Authorized>
@@ -47,7 +62,7 @@
             </Authorized>
             <NotAuthorized>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="login">
+                    <NavLink class="nav-link" href="login" Match="NavLinkMatch.All">
                         <span class="bi bi-person-circle-nav-menu"></span> Войти
                     </NavLink>
                 </div>

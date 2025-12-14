@@ -1,7 +1,10 @@
 @page "/register"
+@rendermode InteractiveServer
 
 @using BookLibraryApp.Models
+@using Microsoft.EntityFrameworkCore
 @inject BookLibraryApp.Services.IRepository<LibraryMember> MemberRepository
+@inject BookLibraryApp.Data.AppDbContext Db
 
 <PageTitle>Регистрация</PageTitle>
 
@@ -52,6 +55,44 @@
                 }
             </button>
         </EditForm>
+
+        <h4 class="mt-5">Зарегистрированные читатели</h4>
+        @if (members == null)
+        {
+            <p>Загрузка...</p>
+        }
+        else if (members.Count == 0)
+        {
+            <p>Пока нет читателей.</p>
+        }
+        else
+        {
+            <table class="table table-striped mt-3">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Имя</th>
+                        <th>Email</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var member in members)
+                    {
+                        <tr>
+                            <td>@member.FullName</td>
+                            <td>@member.Email</td>
+                            <td>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-danger delete-member-btn"
+                                        @onclick="() => DeleteMemberAsync(member.Id)">
+                                    Удалить
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
     </Authorized>
     <NotAuthorized>
         <div class="alert alert-warning mt-3">
@@ -63,8 +104,21 @@
 @code {
     private readonly MemberRegistrationModel formModel = new();
     private bool isSubmitting;
+    private bool isDeletingMember;
+    private int? deletingMemberId;
     private string? successMessage;
     private string? errorMessage;
+    private List<LibraryMember>? members;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMembersAsync();
+    }
+
+    private async Task LoadMembersAsync()
+    {
+        members = await MemberRepository.GetAllAsync();
+    }
 
     private async Task RegisterAsync()
     {
@@ -83,6 +137,7 @@
             formModel.FullName = string.Empty;
             formModel.Email = string.Empty;
             formModel.Password = string.Empty;
+            await LoadMembersAsync();
         }
         catch (Exception ex)
         {
@@ -91,6 +146,60 @@
         finally
         {
             isSubmitting = false;
+        }
+    }
+
+    private async Task DeleteMemberAsync(int memberId)
+    {
+        if (isDeletingMember) return;
+
+        isDeletingMember = true;
+        deletingMemberId = memberId;
+
+        try
+        {
+            var member = await MemberRepository.GetByIdAsync(memberId);
+            if (member is null)
+            {
+                errorMessage = "Читатель не найден.";
+                return;
+            }
+
+            var activeTransactions = await Db.Transactions
+                .Where(t => t.MemberId == memberId && t.ReturnedAt == null)
+                .Include(t => t.Book)
+                .ToListAsync();
+
+            foreach (var tx in activeTransactions)
+            {
+                if (tx.Book is not null)
+                {
+                    tx.Book.MarkReturned();
+                }
+                tx.MarkReturned();
+            }
+
+            var allTransactions = await Db.Transactions
+                .Where(t => t.MemberId == memberId)
+                .ToListAsync();
+            if (allTransactions.Count > 0)
+            {
+                Db.Transactions.RemoveRange(allTransactions);
+            }
+
+            await MemberRepository.RemoveAsync(member);
+            await MemberRepository.SaveAsync();
+            successMessage = $"Читатель {member.FullName} удалён.";
+            await LoadMembersAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Не удалось удалить читателя: {ex.Message}";
+        }
+        finally
+        {
+            isDeletingMember = false;
+            deletingMemberId = null;
         }
     }
 }

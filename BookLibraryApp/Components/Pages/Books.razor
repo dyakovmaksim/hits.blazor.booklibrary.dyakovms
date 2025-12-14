@@ -2,6 +2,7 @@
 
 @using BookLibraryApp.Models
 @inject BookLibraryApp.Services.IBookService BookService
+@inject AuthenticationStateProvider AuthProvider
 
 <PageTitle>Книги</PageTitle>
 
@@ -17,6 +18,10 @@ else if (books.Count == 0)
 }
 else
 {
+    @if (!string.IsNullOrEmpty(actionMessage))
+    {
+        <div class="alert @actionAlert">@actionMessage</div>
+    }
     <table class="table table-striped table-hover mt-3">
         <thead class="table-dark">
             <tr>
@@ -25,6 +30,10 @@ else
                 <th>Год</th>
                 <th>Тип</th>
                 <th>Доступна</th>
+                @if (showActions)
+                {
+                    <th>Действия</th>
+                }
             </tr>
         </thead>
         <tbody>
@@ -41,11 +50,32 @@ else
                             <span class="badge bg-success">Да</span>
                         }
                         else
+                    {
+                        <span class="badge bg-danger">Нет</span>
+                    }
+                </td>
+                @if (showActions)
+                {
+                    <td>
+                        @if (isMember)
                         {
-                            <span class="badge bg-danger">Нет</span>
+                            <button type="button" class="btn btn-sm btn-primary me-2"
+                                    disabled="@(!book.IsAvailable || IsProcessing(book.Id))"
+                                    @onclick="() => BorrowFromCatalogAsync(book.Id)">
+                                @(IsProcessing(book.Id) ? "Добавляем..." : "Взять")
+                            </button>
+                        }
+                        @if (isLibrarian)
+                        {
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    disabled="@IsDeleting(book.Id)"
+                                    @onclick="() => DeleteBookAsync(book.Id)">
+                                @(IsDeleting(book.Id) ? "Удаляем..." : "Удалить")
+                            </button>
                         }
                     </td>
-                </tr>
+                }
+            </tr>
             }
         </tbody>
     </table>
@@ -53,9 +83,100 @@ else
 
 @code {
     private List<Book>? books;
+    private bool isMember;
+    private bool isLibrarian;
+    private bool showActions;
+    private int? memberId;
+    private bool isBorrowing;
+    private int? processingBookId;
+    private bool isDeleting;
+    private int? deletingBookId;
+    private string? actionMessage;
+    private string actionAlert = "alert-success";
 
     protected override async Task OnInitializedAsync()
     {
         books = await BookService.GetAllBooksAsync();
+        await InitializeMemberStateAsync();
+    }
+
+    private bool IsProcessing(int bookId) => isBorrowing && processingBookId == bookId;
+    private bool IsDeleting(int bookId) => isDeleting && deletingBookId == bookId;
+
+    private async Task InitializeMemberStateAsync()
+    {
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            if (user.IsInRole(SimpleAuthStateProvider.MemberRole) && int.TryParse(user.FindFirst("MemberId")?.Value, out var id))
+            {
+                memberId = id;
+                isMember = true;
+            }
+
+            if (user.IsInRole(SimpleAuthStateProvider.LibrarianRole))
+            {
+                isLibrarian = true;
+            }
+        }
+
+        showActions = isMember || isLibrarian;
+    }
+
+    private async Task BorrowFromCatalogAsync(int bookId)
+    {
+        if (!isMember || memberId is null) return;
+        if (isBorrowing) return;
+
+        isBorrowing = true;
+        processingBookId = bookId;
+        actionMessage = null;
+
+        try
+        {
+            await BookService.BorrowBookAsync(bookId, memberId.Value);
+            actionAlert = "alert-success";
+            actionMessage = "Книга добавлена в раздел «Мои книги».";
+            books = await BookService.GetAllBooksAsync();
+        }
+        catch (Exception ex)
+        {
+            actionAlert = "alert-danger";
+            actionMessage = $"Не удалось добавить книгу: {ex.Message}";
+        }
+        finally
+        {
+            isBorrowing = false;
+            processingBookId = null;
+        }
+    }
+
+    private async Task DeleteBookAsync(int bookId)
+    {
+        if (!isLibrarian) return;
+        if (isDeleting) return;
+
+        isDeleting = true;
+        deletingBookId = bookId;
+        actionMessage = null;
+
+        try
+        {
+            await BookService.DeleteBookAsync(bookId);
+            actionAlert = "alert-success";
+            actionMessage = "Книга удалена из каталога.";
+            books = await BookService.GetAllBooksAsync();
+        }
+        catch (Exception ex)
+        {
+            actionAlert = "alert-danger";
+            actionMessage = $"Не удалось удалить книгу: {ex.Message}";
+        }
+        finally
+        {
+            isDeleting = false;
+            deletingBookId = null;
+        }
     }
 }
