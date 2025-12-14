@@ -8,7 +8,7 @@ public static class SeedData
     {
         if (db.Books.Any()) return;
 
-        db.Members.Add(new LibraryMember("Иван Петров", "ivan@example.com"));
+        db.Members.Add(new LibraryMember("Иван Петров", "ivan@example.com", "reader123"));
 
         db.Books.AddRange(
             new Textbook("Алгебра", "Иванов", 2020, "111-111", 300, 500,

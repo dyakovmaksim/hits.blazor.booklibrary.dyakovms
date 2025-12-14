@@ -188,6 +188,7 @@
 /Users/maksim/hits.blazor.booklibrary.dyakovms/BookLibraryApp/obj/Debug/net9.0/BookLibraryApp.pdb
 /Users/maksim/hits.blazor.booklibrary.dyakovms/BookLibraryApp/obj/Debug/net9.0/BookLibraryApp.genruntimeconfig.cache
 /Users/maksim/hits.blazor.booklibrary.dyakovms/BookLibraryApp/obj/Debug/net9.0/ref/BookLibraryApp.dll
-/Users/maksim/hits.blazor.booklibrary.dyakovms/BookLibraryApp/obj/Debug/net9.0/compressed/dgj2axo25h-ibxucxeh3z.gz
-/Users/maksim/hits.blazor.booklibrary.dyakovms/BookLibraryApp/obj/Debug/net9.0/compressed/jlj4bp2uet-ibxucxeh3z.gz
 /Users/maksim/hits.blazor.booklibrary.dyakovms/BookLibraryApp/bin/Debug/net9.0/Microsoft.AspNetCore.Identity.EntityFrameworkCore.dll
+/Users/maksim/hits.blazor.booklibrary.dyakovms/BookLibraryApp/obj/Debug/net9.0/BookLibraryApp.sourcelink.json
+/Users/maksim/hits.blazor.booklibrary.dyakovms/BookLibraryApp/obj/Debug/net9.0/compressed/dgj2axo25h-4uw7sj8o7r.gz
+/Users/maksim/hits.blazor.booklibrary.dyakovms/BookLibraryApp/obj/Debug/net9.0/compressed/jlj4bp2uet-4uw7sj8o7r.gz

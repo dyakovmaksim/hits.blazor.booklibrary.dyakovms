@@ -1,0 +1,17 @@
+@page "/logout"
+@rendermode InteractiveServer
+
+@inject BookLibraryApp.Services.IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Выход</PageTitle>
+
+<div class="alert alert-info mt-3">Выходим...</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/");
+    }
+}

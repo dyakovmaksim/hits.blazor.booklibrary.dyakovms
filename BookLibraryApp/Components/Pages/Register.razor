@@ -1,0 +1,96 @@
+@page "/register"
+
+@using BookLibraryApp.Models
+@inject BookLibraryApp.Services.IRepository<LibraryMember> MemberRepository
+
+<PageTitle>Регистрация</PageTitle>
+
+<h3>Регистрация читателя</h3>
+
+<AuthorizeView Roles="Librarian" Context="authState">
+    <Authorized>
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success">@successMessage</div>
+        }
+        else if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <EditForm class="mt-3 col-md-6 col-lg-5" Model="formModel" OnValidSubmit="RegisterAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="mb-3">
+                <label class="form-label">Полное имя</label>
+                <InputText class="form-control" @bind-Value="formModel.FullName" />
+                <ValidationMessage For="@(() => formModel.FullName)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <InputText class="form-control" @bind-Value="formModel.Email" />
+                <ValidationMessage For="@(() => formModel.Email)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Пароль</label>
+                <InputText type="password" class="form-control" @bind-Value="formModel.Password" />
+                <ValidationMessage For="@(() => formModel.Password)" />
+            </div>
+
+            <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                @if (isSubmitting)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    <span>Создаём...</span>
+                }
+                else
+                {
+                    <span>Зарегистрировать</span>
+                }
+            </button>
+        </EditForm>
+    </Authorized>
+    <NotAuthorized>
+        <div class="alert alert-warning mt-3">
+            Страница доступна только библиотекарям. <NavLink href="login">Войдите</NavLink>, чтобы продолжить.
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private readonly MemberRegistrationModel formModel = new();
+    private bool isSubmitting;
+    private string? successMessage;
+    private string? errorMessage;
+
+    private async Task RegisterAsync()
+    {
+        errorMessage = null;
+        successMessage = null;
+        isSubmitting = true;
+
+        try
+        {
+            var newMember = new LibraryMember(formModel.FullName.Trim(), formModel.Email.Trim(), formModel.Password);
+
+            await MemberRepository.AddAsync(newMember);
+            await MemberRepository.SaveAsync();
+
+            successMessage = $"Читатель {newMember.FullName} успешно зарегистрирован.";
+            formModel.FullName = string.Empty;
+            formModel.Email = string.Empty;
+            formModel.Password = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Не удалось создать читателя: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

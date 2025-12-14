@@ -1,0 +1,170 @@
+@page "/login"
+@rendermode InteractiveServer
+
+@using BookLibraryApp.Models
+@inject BookLibraryApp.Services.IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Вход</PageTitle>
+
+<h3>Войти в систему</h3>
+
+<AuthorizeView Context="authState">
+    <Authorized>
+        <div class="alert alert-info mt-3">
+            Вы уже авторизованы как @authState.User.Identity?.Name.
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <div class="mt-4">
+            <p class="fw-semibold">Как вы хотите войти?</p>
+
+            <div class="btn-group" role="group">
+                <button type="button"
+                        class="btn @(selectedRole == RoleMember ? "btn-primary" : "btn-outline-primary")"
+                        @onclick="() => SelectRole(RoleMember)">
+                    Читатель
+                </button>
+                <button type="button"
+                        class="btn @(selectedRole == RoleLibrarian ? "btn-secondary" : "btn-outline-secondary")"
+                        @onclick="() => SelectRole(RoleLibrarian)">
+                    Библиотекарь
+                </button>
+            </div>
+        </div>
+
+        @if (selectedRole == RoleMember)
+        {
+            <div class="card shadow-sm mt-4 col-md-6 col-lg-5">
+                <div class="card-header bg-primary text-white">
+                    Вход для читателя
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        Введите email, с которым вы были зарегистрированы библиотекарем.
+                    </p>
+
+                    @if (!string.IsNullOrEmpty(memberError))
+                    {
+                        <div class="alert alert-danger">@memberError</div>
+                    }
+
+                    <EditForm Model="memberModel" OnValidSubmit="LoginMemberAsync">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <InputText class="form-control" @bind-Value="memberModel.Email" />
+                            <ValidationMessage For="@(() => memberModel.Email)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Пароль</label>
+                            <InputText type="password" class="form-control" @bind-Value="memberModel.Password" />
+                            <ValidationMessage For="@(() => memberModel.Password)" />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" disabled="@isMemberSubmitting">
+                            @(isMemberSubmitting ? "Входим..." : "Войти как читатель")
+                        </button>
+                    </EditForm>
+                </div>
+            </div>
+        }
+        else if (selectedRole == RoleLibrarian)
+        {
+            <div class="card shadow-sm mt-4 col-md-6 col-lg-5">
+                <div class="card-header bg-secondary text-white">
+                    Вход для библиотекаря
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(librarianError))
+                    {
+                        <div class="alert alert-danger">@librarianError</div>
+                    }
+
+                    <EditForm Model="librarianModel" OnValidSubmit="LoginLibrarianAsync">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <InputText class="form-control" @bind-Value="librarianModel.Email" />
+                            <ValidationMessage For="@(() => librarianModel.Email)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Пароль</label>
+                            <InputText type="password" class="form-control" @bind-Value="librarianModel.Password" />
+                            <ValidationMessage For="@(() => librarianModel.Password)" />
+                        </div>
+
+                        <button type="submit" class="btn btn-secondary" disabled="@isLibrarianSubmitting">
+                            @(isLibrarianSubmitting ? "Проверяем..." : "Войти как библиотекарь")
+                        </button>
+                    </EditForm>
+                </div>
+            </div>
+        }
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private const string RoleMember = "member";
+    private const string RoleLibrarian = "librarian";
+
+    private readonly MemberLoginModel memberModel = new();
+    private readonly LibrarianLoginModel librarianModel = new();
+
+    private bool isMemberSubmitting;
+    private bool isLibrarianSubmitting;
+    private string? memberError;
+    private string? librarianError;
+    private string? selectedRole;
+
+    private void SelectRole(string role)
+    {
+        selectedRole = role;
+        memberError = null;
+        librarianError = null;
+    }
+
+    private async Task LoginMemberAsync()
+    {
+        memberError = null;
+        isMemberSubmitting = true;
+
+        var success = await AuthService.LoginAsMemberAsync(memberModel.Email, memberModel.Password);
+
+        isMemberSubmitting = false;
+
+        if (success)
+        {
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            memberError = "Читатель с таким email не найден.";
+        }
+    }
+
+    private async Task LoginLibrarianAsync()
+    {
+        librarianError = null;
+        isLibrarianSubmitting = true;
+
+        var success = await AuthService.LoginAsLibrarianAsync(librarianModel.Email, librarianModel.Password);
+
+        isLibrarianSubmitting = false;
+
+        if (success)
+        {
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            librarianError = "Неверные учетные данные библиотекаря.";
+        }
+    }
+}

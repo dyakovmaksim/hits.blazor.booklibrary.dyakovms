@@ -1,3 +1,5 @@
+@inject BookLibraryApp.Services.IAuthService AuthService
+
 ﻿<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">BookLibraryApp</a>
@@ -19,6 +21,44 @@
                 <span class="bi bi-book-nav-menu"></span> Книги
             </NavLink>
         </div>
+
+        <AuthorizeView Roles="Librarian">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="register">
+                        <span class="bi bi-plus-square-fill-nav-menu"></span> Регистрация
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView>
+            <Authorized Context="authState">
+                <div class="nav-item px-3">
+                    <span class="nav-link nav-user">
+                        <span class="bi bi-person-circle-nav-menu"></span> @authState.User.Identity?.Name
+                    </span>
+                </div>
+                <div class="nav-item px-3">
+                    <button class="nav-link logout-button" type="button" @onclick="LogoutAsync">
+                        <span class="bi bi-box-arrow-right-nav-menu"></span> Выйти
+                    </button>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="login">
+                        <span class="bi bi-person-circle-nav-menu"></span> Войти
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
     </nav>
 </div>
 
+@code {
+    private async Task LogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+    }
+}
